@@ -1,4 +1,4 @@
-import {StatGenUi} from "./charactersheet/statgen-ui.js";
+import {StatGenUi} from "./charactersheet/charactersheet-ui.js";
 import {VetoolsConfig} from "./utils-config/utils-config-config.js";
 import {UtilsEntityBackground} from "./utils/utils-entity-background.js";
 import {UtilsEntityRace} from "./utils/utils-entity-race.js";
@@ -15,16 +15,18 @@ class StatGenPage {
 			BrewUtil2.pInit(),
 		]);
 		await ExcludeUtil.pInitialise();
-		const [races, backgrounds, feats] = await Promise.all([
+		const [races, backgrounds, feats, classes] = await Promise.all([
 			await this._pLoadRaces(),
 			await this._pLoadBackgrounds(),
 			await this._pLoadFeats(),
+			await this._pLoadClasses(),
 		]);
 
 		this._statGenUi = new StatGenUi({
 			races,
 			backgrounds,
 			feats,
+			classes,
 			tabMetasAdditional: this._getAdditionalTabMetas(),
 		});
 		await this._statGenUi.pInit();
@@ -163,6 +165,18 @@ class StatGenPage {
 			.filter(it => {
 				const hash = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_FEATS](it);
 				return !ExcludeUtil.isExcluded(hash, "feat", it.source);
+			});
+	}
+
+	async _pLoadClasses () {
+		return [
+			...(await DataLoader.pCacheAndGetAllSite(UrlUtil.PG_CLASSES)),
+			...(await DataLoader.pCacheAndGetAllPrerelease(UrlUtil.PG_CLASSES)),
+			...(await DataLoader.pCacheAndGetAllBrew(UrlUtil.PG_CLASSES)),
+		]
+			.filter(it => {
+				const hash = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_CLASSES](it);
+				return !ExcludeUtil.isExcluded(hash, "class", it.source);
 			});
 	}
 

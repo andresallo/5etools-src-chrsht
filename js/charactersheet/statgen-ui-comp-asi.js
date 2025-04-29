@@ -8,7 +8,7 @@ export class StatGenUiCompAsi extends BaseComponent {
 		super();
 		this._parent = parent;
 
-		this._metasAsi = {ability: [], race: [], background: [], custom: []};
+		this._metasAsi = {ability: [], race: [], background: [], custom: [],classes: []};
 
 		this._doPulseThrottled = MiscUtil.throttle(this._doPulse_.bind(this), 50);
 	}
@@ -270,6 +270,68 @@ export class StatGenUiCompAsi extends BaseComponent {
 		hkEnt();
 	}
 
+	_render_renderClass (propCnt, namespace, $wrpRows) {
+		if (!this._parent.state) {
+			console.error("State is not defined in parent component.");
+			return;
+		}
+
+		const hk = () => {
+			let ix = 0;
+
+			for (; ix < this._parent.state[propCnt]; ++ix) {
+				const ix_ = ix;
+				const {propMode, propIxClass} = this._parent.getPropsClass(ix_, namespace);
+				console.log("propMode:", propMode); // Depuración
+				console.log("propIxClass:", propIxClass); // Depuración
+
+				if (!this._metasAsi[namespace][ix_]) {
+					this._parent.state[propMode] = this._parent.state[propMode] || "class";
+
+					const $btnClass = $(`<button class="ve-btn ve-btn-xs ve-btn-default w-50p">Class</button>`)
+						.click(() => {
+							this._parent.state[propMode] = "class";
+							this._doPulseThrottled();
+						});
+
+					// region Class
+					const {$stgClass, $btnChooseClass, hkIxClass} = this._render_getMetaClass({propIxClass});
+					// endregion
+
+					const hkMode = () => {
+						$btnChooseClass.toggleVe(this._parent.state[propMode] === "class");
+						$stgClass.toggleVe(this._parent.state[propMode] === "class");
+						hkIxClass();
+					};
+					this._parent.addHookBase(propMode, hkMode);
+					hkMode();
+
+					const $row = $$`<div class="ve-flex-v-end py-3 px-1">
+						<div class="ve-btn-group">${$btnClass}</div>
+						<div class="vr-4"></div>
+						${$stgClass}
+					</div>`.appendTo($wrpRows);
+
+					this._metasAsi[namespace][ix_] = {
+						$row,
+					};
+				}
+
+				this._metasAsi[namespace][ix_].$row.showVe().addClass("statgen-asi__row");
+			}
+
+			// Remove border styling from the last visible row
+			if (this._metasAsi[namespace][ix - 1]) this._metasAsi[namespace][ix - 1].$row.removeClass("statgen-asi__row");
+
+			for (; ix < this._metasAsi[namespace].length; ++ix) {
+				if (!this._metasAsi[namespace][ix]) continue;
+				this._metasAsi[namespace][ix].$row.hideVe().removeClass("statgen-asi__row");
+			}
+		};
+		this._parent.addHookBase(propCnt, hk);
+		hk();
+	}
+
 	/**
 	 * @param {?string} featStatic Static feat UID.
 	 * @param {?string} propIxFeat Dynamic feat UID property.
@@ -278,6 +340,8 @@ export class StatGenUiCompAsi extends BaseComponent {
 	 * @param {?string} category Category feat is to be chosen from, e.g. `O` ("Origin").
 	 * @private
 	 */
+
+	
 	_render_getMetaFeat ({featStatic = null, propIxFeat = null, propIxFeatAbility, propFeatAbilityChooseFrom, category = null}) {
 		if (featStatic && propIxFeat) throw new Error(`Cannot combine static feat and feat property!`);
 		if (featStatic == null && propIxFeat == null) throw new Error(`Either a static feat or a feat property must be specified!`);
@@ -439,6 +503,51 @@ export class StatGenUiCompAsi extends BaseComponent {
 		return {$btnChooseFeat, $stgFeat, hkIxFeat, cleanup};
 	}
 
+	_render_getMetaClass ({propIxClass}) {
+		if (!propIxClass) throw new Error(`A class property must be specified!`);
+
+		const $btnChooseClass = $(`<button class="ve-btn ve-btn-xxs ve-btn-default mr-2" title="Choose a Class"><span class="glyphicon glyphicon-search"></span></button>`)
+			.click(async () => {
+				const selecteds = await this._parent.modalFilterClasses.pGetUserSelection();
+				if (selecteds == null || !selecteds.length) return;
+
+				const selected = selecteds[0];
+				const ix = this._parent.classes.findIndex(it => it.name === selected.name && it.source === selected.values.sourceJson);
+				if (!~ix) throw new Error(`Could not find selected entity: ${JSON.stringify(selected)}`); // Should never occur
+				this._parent.state[propIxClass] = ix;
+
+				this._doPulseThrottled();
+			});
+
+		const $dispClass = $(`<div class="ve-flex-v-center mr-2"></div>`);
+
+		const $stgClass = $$`<div class="ve-flex-v-center">
+			${$btnChooseClass}
+			${$dispClass}
+		</div>`;
+
+		const fnsCleanup = [];
+
+		const hkIxClass = () => {
+			const cls = this._parent.classes[this._parent.state[propIxClass]];
+
+			$dispClass.toggleClass("italic ve-muted", !cls);
+			$dispClass.html(cls ? Renderer.get().render(`{@class ${cls.name}|${cls.source}}`) : `(Choose a class)`);
+
+			this._doPulseThrottled();
+		};
+
+		this._parent.addHookBase(propIxClass, hkIxClass);
+		fnsCleanup.push(() => this._parent.removeHookBase(propIxClass, hkIxClass));
+		hkIxClass();
+
+		const cleanup = () => {
+			fnsCleanup.splice(0, fnsCleanup.length).forEach(fn => fn());
+		};
+
+		return {$btnChooseClass, $stgClass, hkIxClass, cleanup};
+	}
+
 	render ($wrpAsi) {
 		const $wrpRowsAsi = $(`<div class="ve-flex-col w-100 ve-overflow-y-auto"></div>`);
 		const $wrpRowsRace = $(`<div class="ve-flex-col w-100 ve-overflow-y-auto"></div>`);
@@ -446,8 +555,8 @@ export class StatGenUiCompAsi extends BaseComponent {
 		const $wrpRowsCustom = $(`<div class="ve-flex-col w-100 ve-overflow-y-auto"></div>`);
 		const $wrpRowsClasses = $(`<div class="ve-flex-col w-100 ve-overflow-y-auto"></div>`);
 
+		this._render_renderClass("common_cntClasses", "classes", $wrpRowsClasses);
 		this._render_renderAsiFeatSection("common_cntAsi", "ability", $wrpRowsAsi);
-//		this._render_renderAsiFeatSection("common_cntClasses", "classes", $wrpRowsClasses);
 		this._render_renderAsiFeatSection("common_cntFeatsCustom", "custom", $wrpRowsCustom);
 		this._render_renderAdditionalFeatSection({propEntity: "common_ixRace", namespace: "race", $wrpRows: $wrpRowsRace});
 		this._render_renderAdditionalFeatSection({propEntity: "common_ixBackground", namespace: "background", $wrpRows: $wrpRowsBackground});
@@ -483,7 +592,9 @@ export class StatGenUiCompAsi extends BaseComponent {
 
 		$$($wrpAsi)`
 			<h4 class="my-2 bold">Select a Class</h4>
+			<label class="w-100 ve-flex-v-center mb-2">
 			<div class="mr-2 no-shrink">Number of Classes:</div>${wrpCountClasses}
+			</label>
 			${$wrpRowsClasses}
 			<hr class="hr-3 hr">
 			<h4 class="my-2 bold">Ability Score Increases</h4>

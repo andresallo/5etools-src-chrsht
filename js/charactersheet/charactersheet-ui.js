@@ -34,14 +34,17 @@ export class StatGenUi extends BaseComponent {
 	 * @param opts.races
 	 * @param opts.backgrounds
 	 * @param opts.feats
+	 * @param opts.classes
 	 * @param [opts.tabMetasAdditional]
 	 * @param [opts.isCharacterMode] Disables some functionality (e.g. changing number of ability scores)
 	 * @param [opts.isFvttMode]
 	 * @param [opts.modalFilterRaces]
 	 * @param [opts.modalFilterBackgrounds]
 	 * @param [opts.modalFilterFeats]
+	 * @param [opts.modalFilterClasses]
 	 * @param [opts.existingScores]
 	 */
+
 	constructor (opts) {
 		super();
 		opts = opts || {};
@@ -51,6 +54,7 @@ export class StatGenUi extends BaseComponent {
 		this._races = opts.races;
 		this._backgrounds = opts.backgrounds;
 		this._feats = opts.feats;
+		this._classes = opts.classes;
 		this._tabMetasAdditional = opts.tabMetasAdditional;
 		this._isCharacterMode = opts.isCharacterMode;
 		this._isFvttMode = opts.isFvttMode;
@@ -75,6 +79,11 @@ export class StatGenUi extends BaseComponent {
 		this._modalFilterRaces = opts.modalFilterRaces || new ModalFilterRaces({namespace: "statgen.races", isRadio: true, allData: this._races});
 		this._modalFilterBackgrounds = opts.modalFilterBackgrounds || new ModalFilterBackgrounds({namespace: "statgen.backgrounds", isRadio: true, allData: this._backgrounds});
 		this._modalFilterFeats = opts.modalFilterFeats || new ModalFilterFeats({namespace: "statgen.feats", isRadio: true, allData: this._feats});
+		this._modalFilterClasses = opts.modalFilterClasses || new ModalFilterClasses({
+			namespace: "statgen.classes",
+			isRadio: true,
+			allData: this._classes, // Asegúrate de tener una lista de clases en `this._classes`
+		});
 
 		this._isLevelUp = !!opts.existingScores;
 		this._existingScores = opts.existingScores;
@@ -150,6 +159,8 @@ export class StatGenUi extends BaseComponent {
 	get state () { return this._state; }
 	get modalFilterFeats () { return this._modalFilterFeats; }
 	get feats () { return this._feats; }
+	get modalFilterClasses () { return this._modalFilterClasses; }
+	get classes () { return this._classes; }
 	addHookBase (prop, hook) { return this._addHookBase(prop, hook); }
 	removeHookBase (prop, hook) { return this._removeHookBase(prop, hook); }
 	proxyAssignSimple (hookProp, toObj, isOverwrite) { return this._proxyAssignSimple(hookProp, toObj, isOverwrite); }
@@ -227,6 +238,13 @@ export class StatGenUi extends BaseComponent {
 			propIxFeat: `common_additionalFeats_${namespace}_${featsAdditionType}_${ix}_ixFeat`,
 			propIxFeatAbility: `common_additionalFeats_${namespace}_${featsAdditionType}_${ix}_ixFeatAbility`,
 			propFeatAbilityChooseFrom: `common_additionalFeats_${namespace}_${featsAdditionType}_${ix}_featAbilityChooseFrom`,
+		};
+	}
+
+	getPropsClass (ix, namespace) {
+		return {
+			propMode: `common_class_${namespace}_${ix}_mode`,
+			propIxClass: `common_class_${namespace}_${ix}_ixClass`,
 		};
 	}
 
