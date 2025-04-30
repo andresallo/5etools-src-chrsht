@@ -282,17 +282,15 @@ export class StatGenUiCompAsi extends BaseComponent {
 			for (; ix < this._parent.state[propCnt]; ++ix) {
 				const ix_ = ix;
 				const {propMode, propIxClass} = this._parent.getPropsClass(ix_, namespace);
-				console.log("propMode:", propMode); // Depuración
-				console.log("propIxClass:", propIxClass); // Depuración
 
 				if (!this._metasAsi[namespace][ix_]) {
 					this._parent.state[propMode] = this._parent.state[propMode] || "class";
 
-					const $btnClass = $(`<button class="ve-btn ve-btn-xs ve-btn-default w-50p">Class</button>`)
-						.click(() => {
-							this._parent.state[propMode] = "class";
-							this._doPulseThrottled();
-						});
+//					const $btnClass = $(`<div class="ve-btn ve-btn-xs ve-btn-default w-50p">Class</div>`)
+//						.click(() => {
+//							this._parent.state[propMode] = "class";
+//							this._doPulseThrottled();
+//						});
 
 					// region Class
 					const {$stgClass, $btnChooseClass, hkIxClass} = this._render_getMetaClass({propIxClass});
@@ -306,11 +304,13 @@ export class StatGenUiCompAsi extends BaseComponent {
 					this._parent.addHookBase(propMode, hkMode);
 					hkMode();
 
-					const $row = $$`<div class="ve-flex-v-end py-3 px-1">
-						<div class="ve-btn-group">${$btnClass}</div>
-						<div class="vr-4"></div>
-						${$stgClass}
-					</div>`.appendTo($wrpRows);
+					const $wrpRowsInner = $(`<div class="w-100 ve-flex-col min-h-0"></div>`).appendTo($wrpRows);
+
+					const $row = $$`<div class="ve-flex py-3 px-1">
+               	<div class="ve-btn-group"><div class="w-100p ve-text-center">Class</div></div>
+               	<div class="vr-4"></div>
+               	${$stgClass}
+               </div>`.appendTo($wrpRowsInner);
 
 					this._metasAsi[namespace][ix_] = {
 						$row,
@@ -341,7 +341,7 @@ export class StatGenUiCompAsi extends BaseComponent {
 	 * @private
 	 */
 
-	
+
 	_render_getMetaFeat ({featStatic = null, propIxFeat = null, propIxFeatAbility, propFeatAbilityChooseFrom, category = null}) {
 		if (featStatic && propIxFeat) throw new Error(`Cannot combine static feat and feat property!`);
 		if (featStatic == null && propIxFeat == null) throw new Error(`Either a static feat or a feat property must be specified!`);
@@ -506,18 +506,30 @@ export class StatGenUiCompAsi extends BaseComponent {
 	_render_getMetaClass ({propIxClass}) {
 		if (!propIxClass) throw new Error(`A class property must be specified!`);
 
-		const $btnChooseClass = $(`<button class="ve-btn ve-btn-xxs ve-btn-default mr-2" title="Choose a Class"><span class="glyphicon glyphicon-search"></span></button>`)
-			.click(async () => {
-				const selecteds = await this._parent.modalFilterClasses.pGetUserSelection();
-				if (selecteds == null || !selecteds.length) return;
+//		const $btnChooseClass = $(`<button class="ve-btn ve-btn-xxs ve-btn-default mr-2" title="Choose a Class"><span class="glyphicon glyphicon-search"></span></button>`)
+//			.click(async () => {
+//				const selecteds = await this._parent.modalFilterClasses.pGetUserSelection();
+//				if (selecteds == null || !selecteds.length) return;
+//
+//				const selected = selecteds[0];
+//				const ix = this._parent.classes.findIndex(it => it.name === selected.name && it.source === selected.values.sourceJson);
+//				if (!~ix) throw new Error(`Could not find selected entity: ${JSON.stringify(selected)}`); // Should never occur
+//				this._parent.state[propIxClass] = ix;
+//
+//				this._doPulseThrottled();
+//			});
 
-				const selected = selecteds[0];
-				const ix = this._parent.classes.findIndex(it => it.name === selected.name && it.source === selected.values.sourceJson);
-				if (!~ix) throw new Error(`Could not find selected entity: ${JSON.stringify(selected)}`); // Should never occur
-				this._parent.state[propIxClass] = ix;
+const $btnChooseClass = $(`<button class="ve-btn ve-btn-xxs ve-btn-default mr-2" title="Choose a Class"><span class="glyphicon glyphicon-search"></span></button>`)
+	.click(async () => {
+		const selecteds = await this._parent.modalFilterClasses.pGetUserSelection();
 
-				this._doPulseThrottled();
-			});
+		const selected = selecteds.class;
+
+		const ix = this._parent.classes.findIndex(it => it.name === selected.name && it.source === (selected.source || selected.values?.sourceJson));
+
+		this._parent.state[propIxClass] = ix;
+		this._doPulseThrottled();
+	});
 
 		const $dispClass = $(`<div class="ve-flex-v-center mr-2"></div>`);
 
@@ -529,12 +541,12 @@ export class StatGenUiCompAsi extends BaseComponent {
 		const fnsCleanup = [];
 
 		const hkIxClass = () => {
-			const cls = this._parent.classes[this._parent.state[propIxClass]];
+			 const cls = this._parent.classes[this._parent.state[propIxClass]];
 
-			$dispClass.toggleClass("italic ve-muted", !cls);
-			$dispClass.html(cls ? Renderer.get().render(`{@class ${cls.name}|${cls.source}}`) : `(Choose a class)`);
+			 $dispClass.toggleClass("italic ve-muted", !cls);
+			 $dispClass.html(cls ? Renderer.get().render(`{@class ${cls.name}|${cls.source}}`) : `(Choose a class)`);
 
-			this._doPulseThrottled();
+			 this._doPulseThrottled();
 		};
 
 		this._parent.addHookBase(propIxClass, hkIxClass);

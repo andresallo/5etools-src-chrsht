@@ -1,4 +1,4 @@
-import {StatGenUi} from "./charactersheet/charactersheet-ui.js";
+import {StatGenUi} from "./charactersheet/charactersheet2-ui.js";
 import {VetoolsConfig} from "./utils-config/utils-config-config.js";
 import {UtilsEntityBackground} from "./utils/utils-entity-background.js";
 import {UtilsEntityRace} from "./utils/utils-entity-race.js";

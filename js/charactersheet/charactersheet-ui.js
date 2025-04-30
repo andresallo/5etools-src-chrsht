@@ -1,6 +1,7 @@
 import {StatGenUiCompAsi} from "./statgen-ui-comp-asi.js";
 import {StatGenUiRenderLevelOneBackground} from "./statgen-ui-comp-levelone-background.js";
 import {StatGenUiRenderLevelOneRace} from "./statgen-ui-comp-levelone-race.js";
+import {StatGenUiRenderLevelOneClass} from "./statgen-ui-comp-levelone-class.js";
 import {StatGenUiRenderableCollectionPbRules} from "./statgen-ui-comp-pbrules.js";
 import {MAX_CUSTOM_FEATS, MODE_NONE} from "./statgen-ui-consts.js";
 import {VetoolsConfig} from "../utils-config/utils-config-config.js";
@@ -54,7 +55,7 @@ export class StatGenUi extends BaseComponent {
 		this._races = opts.races;
 		this._backgrounds = opts.backgrounds;
 		this._feats = opts.feats;
-		this._classes = opts.classes;
+		this._classes = (opts.classes || []).filter(cls => cls.__prop === "class");
 		this._tabMetasAdditional = opts.tabMetasAdditional;
 		this._isCharacterMode = opts.isCharacterMode;
 		this._isFvttMode = opts.isFvttMode;
@@ -79,11 +80,7 @@ export class StatGenUi extends BaseComponent {
 		this._modalFilterRaces = opts.modalFilterRaces || new ModalFilterRaces({namespace: "statgen.races", isRadio: true, allData: this._races});
 		this._modalFilterBackgrounds = opts.modalFilterBackgrounds || new ModalFilterBackgrounds({namespace: "statgen.backgrounds", isRadio: true, allData: this._backgrounds});
 		this._modalFilterFeats = opts.modalFilterFeats || new ModalFilterFeats({namespace: "statgen.feats", isRadio: true, allData: this._feats});
-		this._modalFilterClasses = opts.modalFilterClasses || new ModalFilterClasses({
-			namespace: "statgen.classes",
-			isRadio: true,
-			allData: this._classes, // Asegúrate de tener una lista de clases en `this._classes`
-		});
+		this._modalFilterClasses = opts.modalFilterClasses || new ModalFilterClasses({namespace: "statgen.classes", isRadio: true, allData: this._classes});
 
 		this._isLevelUp = !!opts.existingScores;
 		this._existingScores = opts.existingScores;
@@ -208,6 +205,7 @@ export class StatGenUi extends BaseComponent {
 		await this._modalFilterRaces.pPopulateHiddenWrapper();
 		await this._modalFilterBackgrounds.pPopulateHiddenWrapper();
 		await this._modalFilterFeats.pPopulateHiddenWrapper();
+		await this._modalFilterClasses.pPopulateHiddenWrapper();
 	}
 
 	getPropsAsi (ix, namespace) {
@@ -744,6 +742,10 @@ export class StatGenUi extends BaseComponent {
 		hkStgManual();
 		// endregion
 
+		// region Class-specific elements
+		
+		// endregion
+
 		// region Other elements
 		const hkElesMode = () => {
 			$stgNone.toggleVe(this.ixActiveTab === this._IX_TAB_NONE);
@@ -933,7 +935,7 @@ export class StatGenUi extends BaseComponent {
 							<div class="my-1 bold statgen-pb__header ve-flex-vh-center">Base</div>
 							${$wrpsBase}
 						</div>
-
+						
 						${$wrpBackgroundOuter}
 						${$wrpRaceOuter}
 
@@ -989,6 +991,8 @@ export class StatGenUi extends BaseComponent {
 	_renderLevelOneRace = new StatGenUiRenderLevelOneRace({parent: this});
 
 	_renderLevelOneBackground = new StatGenUiRenderLevelOneBackground({parent: this});
+
+	_renderLevelOneClass = new StatGenUiRenderLevelOneClass({parent: this});
 
 	_render_isLevelUp ($wrpTab) {
 		const $wrpsExisting = Parser.ABIL_ABVS.map(ab => {
@@ -1480,6 +1484,9 @@ export class StatGenUi extends BaseComponent {
 			common_pulseAsi: false, // Used as a general pulse for all changes in form data
 			common_cntAsi: 0,
 			common_cntFeatsCustom: 0,
+
+			common_isPreviewClass: false,
+			common_ixClass: null,
 
 			// region Used to allow external components to hook onto score changes
 			common_export_str: null,
