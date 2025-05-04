@@ -1,4 +1,4 @@
-import {StatGenUi} from "./charactersheet/charactersheet2-ui.js";
+import {StatGenUi} from "./charactersheet/charactersheet-ui.js";
 import {VetoolsConfig} from "./utils-config/utils-config-config.js";
 import {UtilsEntityBackground} from "./utils/utils-entity-background.js";
 import {UtilsEntityRace} from "./utils/utils-entity-race.js";
@@ -29,6 +29,7 @@ class StatGenPage {
 			classes,
 			tabMetasAdditional: this._getAdditionalTabMetas(),
 		});
+
 		await this._statGenUi.pInit();
 		this._statGenUi.addHookActiveTag(() => this._setHashFromTab());
 		const savedStateDebounced = MiscUtil.throttle(this._pDoSaveState.bind(this), 100);

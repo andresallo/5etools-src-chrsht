@@ -155,9 +155,7 @@ export class StatGenUiRenderLevelOneEntityBase {
 
 		return {
 			$wrpOuter,
-
 			$stgSel,
-
 			$dispPreview,
 			$hrPreview,
 		};

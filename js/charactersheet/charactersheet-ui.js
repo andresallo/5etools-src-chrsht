@@ -1,11 +1,12 @@
-import {StatGenUiCompAsi} from "./statgen-ui-comp-asi.js";
-import {StatGenUiRenderLevelOneBackground} from "./statgen-ui-comp-levelone-background.js";
-import {StatGenUiRenderLevelOneRace} from "./statgen-ui-comp-levelone-race.js";
-import {StatGenUiRenderLevelOneClass} from "./statgen-ui-comp-levelone-class.js";
-import {StatGenUiRenderableCollectionPbRules} from "./statgen-ui-comp-pbrules.js";
-import {MAX_CUSTOM_FEATS, MODE_NONE} from "./statgen-ui-consts.js";
-import {VetoolsConfig} from "../utils-config/utils-config-config.js";
-import {SITE_STYLE__ONE} from "../consts.js";
+import { StatGenUiCompAsi } from "./statgen-ui-comp-asi.js";
+import { StatGenUiRenderLevelOneBackground } from "./statgen-ui-comp-levelone-background.js";
+import { StatGenUiRenderLevelOneRace } from "./statgen-ui-comp-levelone-race.js";
+import { StatGenUiRenderLevelOneClass } from "./statgen-ui-comp-levelone-class.js";
+import { StatGenUiRenderLevelOneSubclass } from "./statgen-ui-comp-levelone-subclass.js";
+import { StatGenUiRenderableCollectionPbRules } from "./statgen-ui-comp-pbrules.js";
+import { MAX_CUSTOM_FEATS, MODE_NONE } from "./statgen-ui-consts.js";
+import { VetoolsConfig } from "../utils-config/utils-config-config.js";
+import { SITE_STYLE__ONE } from "../consts.js";
 
 export class StatGenUi extends BaseComponent {
 	static _STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
@@ -17,7 +18,7 @@ export class StatGenUi extends BaseComponent {
 		"rolled",
 		"array",
 		"pointbuy",
-		"crea",
+		"creation",
 	];
 	static _MODES_FVTT = [
 		MODE_NONE,
@@ -43,19 +44,21 @@ export class StatGenUi extends BaseComponent {
 	 * @param [opts.modalFilterBackgrounds]
 	 * @param [opts.modalFilterFeats]
 	 * @param [opts.modalFilterClasses]
+	 * @param [opts.modalFilterSubclasses]
 	 * @param [opts.existingScores]
 	 */
 
-	constructor (opts) {
+	constructor(opts) {
 		super();
 		opts = opts || {};
 
-		TabUiUtilSide.decorate(this, {isInitMeta: true});
+		TabUiUtilSide.decorate(this, { isInitMeta: true });
 
 		this._races = opts.races;
 		this._backgrounds = opts.backgrounds;
 		this._feats = opts.feats;
 		this._classes = (opts.classes || []).filter(cls => cls.__prop === "class");
+		this._subclasses = (opts.classes || []).filter(cls => cls.__prop === "subclass");
 		this._tabMetasAdditional = opts.tabMetasAdditional;
 		this._isCharacterMode = opts.isCharacterMode;
 		this._isFvttMode = opts.isFvttMode;
@@ -67,20 +70,23 @@ export class StatGenUi extends BaseComponent {
 			this._IX_TAB_ROLLED = cnt++;
 			this._IX_TAB_ARRAY = cnt++;
 			this._IX_TAB_PB = cnt++;
-			this._IX_TAB_MANUAL = cnt;
+			this._IX_TAB_CLASS_SELECTOR = cnt++;
+			// this._IX_TAB_MANUAL = cnt;
 		} else {
 			this._IX_TAB_NONE = -1;
 			let cnt = 0;
 			this._IX_TAB_ROLLED = cnt++;
 			this._IX_TAB_ARRAY = cnt++;
 			this._IX_TAB_PB = cnt++;
-			this._IX_TAB_MANUAL = cnt;
+			// this._IX_TAB_MANUAL = cnt++;
+			this._IX_TAB_CLASS_SELECTOR = cnt++; // Índice para el nuevo tab
 		}
 
-		this._modalFilterRaces = opts.modalFilterRaces || new ModalFilterRaces({namespace: "statgen.races", isRadio: true, allData: this._races});
-		this._modalFilterBackgrounds = opts.modalFilterBackgrounds || new ModalFilterBackgrounds({namespace: "statgen.backgrounds", isRadio: true, allData: this._backgrounds});
-		this._modalFilterFeats = opts.modalFilterFeats || new ModalFilterFeats({namespace: "statgen.feats", isRadio: true, allData: this._feats});
-		this._modalFilterClasses = opts.modalFilterClasses || new ModalFilterClasses({namespace: "statgen.classes", isRadio: true, allData: this._classes});
+		this._modalFilterRaces = opts.modalFilterRaces || new ModalFilterRaces({ namespace: "statgen.races", isRadio: true, allData: this._races });
+		this._modalFilterBackgrounds = opts.modalFilterBackgrounds || new ModalFilterBackgrounds({ namespace: "statgen.backgrounds", isRadio: true, allData: this._backgrounds });
+		this._modalFilterFeats = opts.modalFilterFeats || new ModalFilterFeats({ namespace: "statgen.feats", isRadio: true, allData: this._feats });
+		this._modalFilterClasses = opts.modalFilterClasses || new ModalFilterClasses({ namespace: "statgen.classes", isRadio: true, allData: this._classes });
+		this._modalFilterSubclasses = opts.modalFilterSubclasses || new ModalFilterClasses({ namespace: "statgen.subclasses", isRadio: true, allData: this._subclasses });
 
 		this._isLevelUp = !!opts.existingScores;
 		this._existingScores = opts.existingScores;
@@ -90,29 +96,29 @@ export class StatGenUi extends BaseComponent {
 		// endregion
 
 		// region Point buy
-		this._compAsi = new StatGenUiCompAsi({parent: this});
+		this._compAsi = new StatGenUiCompAsi({ parent: this });
 		// endregion
 	}
 
-	get MODES () { return this._MODES; }
+	get MODES() { return this._MODES; }
 
-	get ixActiveTab () { return this._getIxActiveTab(); }
-	set ixActiveTab (ix) { this._setIxActiveTab({ixActiveTab: ix}); }
+	get ixActiveTab() { return this._getIxActiveTab(); }
+	set ixActiveTab(ix) { this._setIxActiveTab({ ixActiveTab: ix }); }
 
 	// region Expose for external use
-	addHookPointBuyCustom (hook) { this.constructor._PROPS_POINT_BUY_CUSTOM.forEach(prop => this._addHookBase(prop, hook)); }
+	addHookPointBuyCustom(hook) { this.constructor._PROPS_POINT_BUY_CUSTOM.forEach(prop => this._addHookBase(prop, hook)); }
 
-	addHookAbilityScores (hook) { Parser.ABIL_ABVS.forEach(ab => this._addHookBase(`common_export_${ab}`, hook)); }
-	addHookPulseAsi (hook) { this._addHookBase("common_pulseAsi", hook); }
-	getFormDataAsi () { return this._compAsi.getFormData(); }
+	addHookAbilityScores(hook) { Parser.ABIL_ABVS.forEach(ab => this._addHookBase(`common_export_${ab}`, hook)); }
+	addHookPulseAsi(hook) { this._addHookBase("common_pulseAsi", hook); }
+	getFormDataAsi() { return this._compAsi.getFormData(); }
 
-	getMode (ix, namespace) {
-		const {propMode} = this.getPropsAsi(ix, namespace);
+	getMode(ix, namespace) {
+		const { propMode } = this.getPropsAsi(ix, namespace);
 		return this._state[propMode];
 	}
 
-	setIxFeat (ix, namespace, ixFeat) {
-		const {propMode, propIxFeat} = this.getPropsAsi(ix, namespace);
+	setIxFeat(ix, namespace, ixFeat) {
+		const { propMode, propIxFeat } = this.getPropsAsi(ix, namespace);
 
 		if (ixFeat == null && (this._state[propMode] === "asi" || this._state[propMode] == null)) {
 			this._state[propIxFeat] = null;
@@ -123,50 +129,52 @@ export class StatGenUi extends BaseComponent {
 		this._state[propIxFeat] = ixFeat;
 	}
 
-	setIxFeatSet (namespace, ixSet) {
-		const {propIxSel} = this.getPropsAdditionalFeats_(namespace);
+	setIxFeatSet(namespace, ixSet) {
+		const { propIxSel } = this.getPropsAdditionalFeats_(namespace);
 		this._state[propIxSel] = ixSet;
 	}
 
-	setIxFeatSetIxFeats (namespace, featsAdditionType, metaFeats) {
+	setIxFeatSetIxFeats(namespace, featsAdditionType, metaFeats) {
 		const nxtState = {};
-		metaFeats.forEach(({ix, ixFeat}) => {
-			const {propIxFeat} = this.getPropsAdditionalFeatsFeatSet_(namespace, featsAdditionType, ix);
+		metaFeats.forEach(({ ix, ixFeat }) => {
+			const { propIxFeat } = this.getPropsAdditionalFeatsFeatSet_(namespace, featsAdditionType, ix);
 			nxtState[propIxFeat] = ixFeat;
 		});
 		this._proxyAssignSimple("state", nxtState);
 	}
 
-	set common_cntAsi (val) { this._state.common_cntAsi = val; }
+	set common_cntAsi(val) { this._state.common_cntAsi = val; }
 
-	addHookIxRace (hook) { this._addHookBase("common_ixRace", hook); }
-	get ixRace () { return this._state.common_ixRace; }
-	set ixRace (ixRace) { this._state.common_ixRace = ixRace; }
+	addHookIxRace(hook) { this._addHookBase("common_ixRace", hook); }
+	get ixRace() { return this._state.common_ixRace; }
+	set ixRace(ixRace) { this._state.common_ixRace = ixRace; }
 
-	addHookIxBackground (hook) { this._addHookBase("common_ixBackground", hook); }
-	get ixBackground () { return this._state.common_ixBackground; }
-	set ixBackground (ixBackground) { this._state.common_ixBackground = ixBackground; }
+	addHookIxBackground(hook) { this._addHookBase("common_ixBackground", hook); }
+	get ixBackground() { return this._state.common_ixBackground; }
+	set ixBackground(ixBackground) { this._state.common_ixBackground = ixBackground; }
 
-	addCustomFeat () { this._state.common_cntFeatsCustom = Math.min(MAX_CUSTOM_FEATS, (this._state.common_cntFeatsCustom || 0) + 1); }
-	setCntCustomFeats (val) { this._state.common_cntFeatsCustom = Math.min(MAX_CUSTOM_FEATS, val || 0); }
+	addCustomFeat() { this._state.common_cntFeatsCustom = Math.min(MAX_CUSTOM_FEATS, (this._state.common_cntFeatsCustom || 0) + 1); }
+	setCntCustomFeats(val) { this._state.common_cntFeatsCustom = Math.min(MAX_CUSTOM_FEATS, val || 0); }
 	// endregion
 
 	// region Expose for ASI component
-	get isCharacterMode () { return this._isCharacterMode; }
-	get state () { return this._state; }
-	get modalFilterFeats () { return this._modalFilterFeats; }
-	get feats () { return this._feats; }
-	get modalFilterClasses () { return this._modalFilterClasses; }
-	get classes () { return this._classes; }
-	addHookBase (prop, hook) { return this._addHookBase(prop, hook); }
-	removeHookBase (prop, hook) { return this._removeHookBase(prop, hook); }
-	proxyAssignSimple (hookProp, toObj, isOverwrite) { return this._proxyAssignSimple(hookProp, toObj, isOverwrite); }
-	get race () { return this._races[this._state.common_ixRace]; }
-	get background () { return this._backgrounds[this._state.common_ixBackground]; }
-	get isLevelUp () { return this._isLevelUp; }
+	get isCharacterMode() { return this._isCharacterMode; }
+	get state() { return this._state; }
+	get modalFilterFeats() { return this._modalFilterFeats; }
+	get feats() { return this._feats; }
+	get modalFilterClasses() { return this._modalFilterClasses; }
+	get classes() { return this._classes; }
+	get modalFilterSubclasses() { return this._modalFilterSubclasses; }
+	get subclasses() { return this._subclasses; }
+	addHookBase(prop, hook) { return this._addHookBase(prop, hook); }
+	removeHookBase(prop, hook) { return this._removeHookBase(prop, hook); }
+	proxyAssignSimple(hookProp, toObj, isOverwrite) { return this._proxyAssignSimple(hookProp, toObj, isOverwrite); }
+	get race() { return this._races[this._state.common_ixRace]; }
+	get background() { return this._backgrounds[this._state.common_ixBackground]; }
+	get isLevelUp() { return this._isLevelUp; }
 	// endregion
 
-	getTotals () {
+	getTotals() {
 		if (this._isLevelUp) {
 			return {
 				mode: "levelUp",
@@ -187,28 +195,29 @@ export class StatGenUi extends BaseComponent {
 		};
 	}
 
-	_getTotals_rolled () { return Parser.ABIL_ABVS.mergeMap(ab => ({[ab]: this._rolled_getTotalScore(ab)})); }
-	_getTotals_array () { return Parser.ABIL_ABVS.mergeMap(ab => ({[ab]: this._array_getTotalScore(ab)})); }
-	_getTotals_pb () { return Parser.ABIL_ABVS.mergeMap(ab => ({[ab]: this._pb_getTotalScore(ab)})); }
-	_getTotals_manual () { return Parser.ABIL_ABVS.mergeMap(ab => ({[ab]: this._manual_getTotalScore(ab)})); }
-	_getTotals_levelUp () { return Parser.ABIL_ABVS.mergeMap(ab => ({[ab]: this._levelUp_getTotalScore(ab)})); }
+	_getTotals_rolled() { return Parser.ABIL_ABVS.mergeMap(ab => ({ [ab]: this._rolled_getTotalScore(ab) })); }
+	_getTotals_array() { return Parser.ABIL_ABVS.mergeMap(ab => ({ [ab]: this._array_getTotalScore(ab) })); }
+	_getTotals_pb() { return Parser.ABIL_ABVS.mergeMap(ab => ({ [ab]: this._pb_getTotalScore(ab) })); }
+	_getTotals_manual() { return Parser.ABIL_ABVS.mergeMap(ab => ({ [ab]: this._manual_getTotalScore(ab) })); }
+	_getTotals_levelUp() { return Parser.ABIL_ABVS.mergeMap(ab => ({ [ab]: this._levelUp_getTotalScore(ab) })); }
 
-	addHook (hookProp, prop, hook) { return this._addHook(hookProp, prop, hook); }
-	addHookAll (hookProp, hook) {
+	addHook(hookProp, prop, hook) { return this._addHook(hookProp, prop, hook); }
+	addHookAll(hookProp, hook) {
 		this._addHookAll(hookProp, hook);
 		this._compAsi._addHookAll(hookProp, hook);
 	}
 
-	addHookActiveTag (hook) { this._addHookActiveTab(hook); }
+	addHookActiveTag(hook) { this._addHookActiveTab(hook); }
 
-	async pInit () {
+	async pInit() {
 		await this._modalFilterRaces.pPopulateHiddenWrapper();
 		await this._modalFilterBackgrounds.pPopulateHiddenWrapper();
 		await this._modalFilterFeats.pPopulateHiddenWrapper();
 		await this._modalFilterClasses.pPopulateHiddenWrapper();
+		await this._modalFilterSubclasses.pPopulateHiddenWrapper();
 	}
 
-	getPropsAsi (ix, namespace) {
+	getPropsAsi(ix, namespace) {
 		return {
 			prefix: `common_asi_${namespace}_${ix}_`,
 			propMode: `common_asi_${namespace}_${ix}_mode`,
@@ -224,14 +233,14 @@ export class StatGenUi extends BaseComponent {
 		};
 	}
 
-	getPropsAdditionalFeats_ (namespace) {
+	getPropsAdditionalFeats_(namespace) {
 		return {
 			propPrefix: `common_additionalFeats_${namespace}_`,
 			propIxSel: `common_additionalFeats_${namespace}_ixSel`,
 		};
 	}
 
-	getPropsAdditionalFeatsFeatSet_ (namespace, featsAdditionType, ix) {
+	getPropsAdditionalFeatsFeatSet_(namespace, featsAdditionType, ix) {
 		return {
 			propIxFeat: `common_additionalFeats_${namespace}_${featsAdditionType}_${ix}_ixFeat`,
 			propIxFeatAbility: `common_additionalFeats_${namespace}_${featsAdditionType}_${ix}_ixFeatAbility`,
@@ -239,14 +248,14 @@ export class StatGenUi extends BaseComponent {
 		};
 	}
 
-	getPropsClass (ix, namespace) {
+	getPropsClass(ix, namespace) {
 		return {
 			propMode: `common_class_${namespace}_${ix}_mode`,
 			propIxClass: `common_class_${namespace}_${ix}_ixClass`,
 		};
 	}
 
-	async _roll_pGetRolledStats () {
+	async _roll_pGetRolledStats() {
 		const wrpTree = Renderer.dice.lang.getTree3(this._state.rolled_formula);
 		if (!wrpTree) {
 			this._$rollIptFormula.addClass("form-control--error");
@@ -261,30 +270,30 @@ export class StatGenUi extends BaseComponent {
 		}
 		rolls.sort((a, b) => SortUtil.ascSort(b.total, a.total));
 
-		return rolls.map(r => ({total: r.total, text: (r.text || []).join("")}));
+		return rolls.map(r => ({ total: r.total, text: (r.text || []).join("") }));
 	}
 
-	render ($parent) {
+	render($parent) {
 		$parent.empty().addClass("statgen");
 
 		const iptTabMetas = this._isLevelUp
 			? [
-				new TabUiUtil.TabMeta({name: "Existing", icon: this._isFvttMode ? `fas fa-fw fa-user` : `far fa-fw fa-user`, hasBorder: true}),
+				new TabUiUtil.TabMeta({ name: "Existing", icon: this._isFvttMode ? `fas fa-fw fa-user` : `far fa-fw fa-user`, hasBorder: true }),
 				...this._tabMetasAdditional || [],
 			]
 			: [
-				this._isFvttMode ? new TabUiUtil.TabMeta({name: "Select...", icon: this._isFvttMode ? `fas fa-fw fa-square` : `far fa-fw fa-square`, hasBorder: true, isNoPadding: this._isFvttMode}) : null,
-				new TabUiUtil.TabMeta({name: "Roll", icon: this._isFvttMode ? `fas fa-fw fa-dice` : `far fa-fw fa-dice`, hasBorder: true, isNoPadding: this._isFvttMode}),
-				new TabUiUtil.TabMeta({name: "Standard Array", icon: this._isFvttMode ? `fas fa-fw fa-signal` : `far fa-fw fa-signal-bars`, hasBorder: true, isNoPadding: this._isFvttMode}),
-				new TabUiUtil.TabMeta({name: "Point Buy", icon: this._isFvttMode ? `fas fa-fw fa-chart-bar` : `far fa-fw fa-chart-bar`, hasBorder: true, isNoPadding: this._isFvttMode}),
-				new TabUiUtil.TabMeta({name: "Character Sheet", icon: this._isFvttMode ? `fas fa-fw fa-screwdriver-wrench` : `far fa-fw fa-screwdriver-wrench`, hasBorder: true, isNoPadding: this._isFvttMode}),
+				this._isFvttMode ? new TabUiUtil.TabMeta({ name: "Select...", icon: this._isFvttMode ? `fas fa-fw fa-square` : `far fa-fw fa-square`, hasBorder: true, isNoPadding: this._isFvttMode }) : null,
+				new TabUiUtil.TabMeta({ name: "Roll", icon: this._isFvttMode ? `fas fa-fw fa-dice` : `far fa-fw fa-dice`, hasBorder: true, isNoPadding: this._isFvttMode }),
+				new TabUiUtil.TabMeta({ name: "Standard Array", icon: this._isFvttMode ? `fas fa-fw fa-signal` : `far fa-fw fa-signal-bars`, hasBorder: true, isNoPadding: this._isFvttMode }),
+				new TabUiUtil.TabMeta({ name: "Point Buy", icon: this._isFvttMode ? `fas fa-fw fa-chart-bar` : `far fa-fw fa-chart-bar`, hasBorder: true, isNoPadding: this._isFvttMode }),
+				new TabUiUtil.TabMeta({ name: "Class Selector", icon: this._isFvttMode ? `fas fa-fw fa-graduation-cap` : `far fa-fw fa-graduation-cap`, hasBorder: true, isNoPadding: this._isFvttMode }), // Nuevo tab
 				...this._tabMetasAdditional || [],
 			].filter(Boolean);
 
-		const tabMetas = this._renderTabs(iptTabMetas, {$parent: this._isFvttMode ? null : $parent});
+		const tabMetas = this._renderTabs(iptTabMetas, { $parent: this._isFvttMode ? null : $parent });
 		if (this._isFvttMode) {
 			if (!this._isLevelUp) {
-				const {propActive: propActiveTab, propProxy: propProxyTabs} = this._getTabProps();
+				const { propActive: propActiveTab, propProxy: propProxyTabs } = this._getTabProps();
 				const $selMode = ComponentUiUtil.$getSelEnum(
 					this,
 					propActiveTab,
@@ -318,7 +327,7 @@ export class StatGenUi extends BaseComponent {
 		this._addHookBase("common_cntFeatsCustom", () => this._state.common_pulseAsi = !this._state.common_pulseAsi);
 	}
 
-	_render_$getStgRolledHeader () {
+	_render_$getStgRolledHeader() {
 		this._$rollIptFormula = ComponentUiUtil.$getIptStr(this, "rolled_formula")
 			.addClass("ve-text-center max-w-100p")
 			.keydown(evt => {
@@ -326,7 +335,7 @@ export class StatGenUi extends BaseComponent {
 			})
 			.change(() => this._$rollIptFormula.removeClass("form-control--error"));
 
-		const $iptRollCount = this._isCharacterMode ? null : ComponentUiUtil.$getIptInt(this, "rolled_rollCount", 1, {min: 1, fallbackOnNaN: 1, html: `<input type="text" class="form-control input-xs form-control--minimal ve-text-center max-w-100p">`})
+		const $iptRollCount = this._isCharacterMode ? null : ComponentUiUtil.$getIptInt(this, "rolled_rollCount", 1, { min: 1, fallbackOnNaN: 1, html: `<input type="text" class="form-control input-xs form-control--minimal ve-text-center max-w-100p">` })
 			.keydown(evt => {
 				if (evt.key === "Enter") setTimeout(() => $btnRoll.click()); // Defer to allow `.change` to fire first
 			})
@@ -348,7 +357,7 @@ export class StatGenUi extends BaseComponent {
 			.click(() => {
 				const abs = [...Parser.ABIL_ABVS].shuffle();
 				abs.forEach((ab, i) => {
-					const {propAbilSelectedRollIx} = this.constructor._rolled_getProps(ab);
+					const { propAbilSelectedRollIx } = this.constructor._rolled_getProps(ab);
 					this._state[propAbilSelectedRollIx] = i;
 				});
 			});
@@ -389,12 +398,12 @@ export class StatGenUi extends BaseComponent {
 		</div>`;
 	}
 
-	_render_$getStgArrayHeader () {
+	_render_$getStgArrayHeader() {
 		const $btnRandom = $(`<button class="ve-btn ve-btn-xs ve-btn-default">Randomly Assign</button>`)
 			.click(() => {
 				const abs = [...Parser.ABIL_ABVS].shuffle();
 				abs.forEach((ab, i) => {
-					const {propAbilSelectedScoreIx} = this.constructor._array_getProps(ab);
+					const { propAbilSelectedScoreIx } = this.constructor._array_getProps(ab);
 					this._state[propAbilSelectedScoreIx] = i;
 				});
 			});
@@ -406,12 +415,34 @@ export class StatGenUi extends BaseComponent {
 		</div>`;
 	}
 
-	_render_$getStgManualHeader () {
+	_render_$getStgManualHeader() {
 		return $$`<div class="ve-flex-col mb-3 mr-auto">
 		</div>`;
 	}
 
-	_doReset () {
+	_render_$getStgClassSelector() {
+		const { $wrpOuter, $stgSel, $hrPreview, $dispClassDetails } = this._renderLevelOneClass.render();
+		const { $wrpOutersub, $stgSelsub, $hrPreviewsub, $dispSubclassDetails } = this._renderLevelOneSubClass.render();
+
+		return $$`<div class="ve-flex w-100">
+			<div class="ve-flex-col pl-2 w-50">
+			<h3 class="my-2 bold">Select a Primary Class</h3>
+			${$wrpOuter}
+			${$stgSel}
+			${$dispClassDetails}
+			${$hrPreview}
+			</div>
+			<div class="ve-flex-col pr-2 w-50">
+			<h3 class="my-2 bold">Select a SubClass</h3>
+			${$wrpOutersub}
+			${$stgSelsub}
+			${$dispSubclassDetails}
+			${$hrPreviewsub}
+			</div>
+		</div>`;
+	}
+
+	_doReset() {
 		if (this._isLevelUp) return; // Should never occur
 
 		const nxtState = this._getDefaultStateCommonResettable();
@@ -421,17 +452,18 @@ export class StatGenUi extends BaseComponent {
 			case this._IX_TAB_ROLLED: Object.assign(nxtState, this._getDefaultStateRolledResettable()); break;
 			case this._IX_TAB_ARRAY: Object.assign(nxtState, this._getDefaultStateArrayResettable()); break;
 			case this._IX_TAB_PB: Object.assign(nxtState, this._getDefaultStatePointBuyResettable()); break;
-			case this._IX_TAB_MANUAL: Object.assign(nxtState, this._getDefaultStateManualResettable()); break;
+			// case this._IX_TAB_MANUAL: Object.assign(nxtState, this._getDefaultStateManualResettable()); break;
+			case this._IX_TAB_CLASS_SELECTOR: Object.assign(nxtState, this._getDefaultStateClassResettable()); break;
 		}
 
 		this._proxyAssignSimple("state", nxtState);
 	}
 
-	doResetAll () {
+	doResetAll() {
 		this._proxyAssignSimple("state", this._getDefaultState(), true);
 	}
 
-	_render_$getStgPbHeader () {
+	_render_$getStgPbHeader() {
 		const $iptBudget = ComponentUiUtil.$getIptInt(
 			this,
 			"pb_budget",
@@ -474,7 +506,7 @@ export class StatGenUi extends BaseComponent {
 				this._doReset();
 
 				let canIncrease = Parser.ABIL_ABVS.map(it => `pb_${it}`);
-				const cpyBaseState = canIncrease.mergeMap(it => ({[it]: this._state[it]}));
+				const cpyBaseState = canIncrease.mergeMap(it => ({ [it]: this._state[it] }));
 				const cntRemaining = this._pb_getPointsRemaining(cpyBaseState);
 				if (cntRemaining <= 0) return;
 
@@ -532,7 +564,7 @@ export class StatGenUi extends BaseComponent {
 		</div>`;
 	}
 
-	_render_$getStgPbCustom () {
+	_render_$getStgPbCustom() {
 		const $btnAddLower = $(`<button class="ve-btn ve-btn-default ve-btn-xs">Add Lower Score</button>`)
 			.click(() => {
 				const prevLowest = this._state.pb_rules[0];
@@ -565,12 +597,12 @@ export class StatGenUi extends BaseComponent {
 			new ContextUtil.Action(
 				"Import from Code",
 				async () => {
-					const raw = await InputUiUtil.pGetUserString({title: "Enter Code", isCode: true});
+					const raw = await InputUiUtil.pGetUserString({ title: "Enter Code", isCode: true });
 					if (raw == null) return;
 					const parsed = this._deserialize_pb_rules(raw);
 					if (parsed == null) return;
 
-					const {pb_rules, pb_budget} = parsed;
+					const { pb_rules, pb_budget } = parsed;
 					this._proxyAssignSimple(
 						"state",
 						{
@@ -605,7 +637,7 @@ export class StatGenUi extends BaseComponent {
 			renderableCollectionRules.render();
 
 			// region Clamp values between new min/max scores
-			const {min: minScore, max: maxScore} = this._pb_getMinMaxScores();
+			const { min: minScore, max: maxScore } = this._pb_getMinMaxScores();
 			Parser.ABIL_ABVS.forEach(it => {
 				const prop = `pb_${it}`;
 				this._state[prop] = Math.min(maxScore, Math.max(minScore, this._state[prop]));
@@ -657,7 +689,7 @@ export class StatGenUi extends BaseComponent {
 		</div>`;
 	}
 
-	_serialize_pb_rules () {
+	_serialize_pb_rules() {
 		const out = [
 			this._state.pb_budget,
 			...MiscUtil.copyFast(this._state.pb_rules).map(it => [it.entity.score, it.entity.cost]),
@@ -667,25 +699,25 @@ export class StatGenUi extends BaseComponent {
 
 	static _DESERIALIZE_MSG_INVALID = "Code was not valid!";
 
-	_deserialize_pb_rules (raw) {
+	_deserialize_pb_rules(raw) {
 		let json;
 		try {
 			json = JSON.parse(raw);
 		} catch (e) {
-			JqueryUtil.doToast({type: "danger", content: `Failed to decode JSON! ${e.message}`});
+			JqueryUtil.doToast({ type: "danger", content: `Failed to decode JSON! ${e.message}` });
 			return null;
 		}
 
-		if (!(json instanceof Array)) return void JqueryUtil.doToast({type: "danger", content: this.constructor._DESERIALIZE_MSG_INVALID});
+		if (!(json instanceof Array)) return void JqueryUtil.doToast({ type: "danger", content: this.constructor._DESERIALIZE_MSG_INVALID });
 
 		const [budget, ...rules] = json;
 
-		if (isNaN(budget)) return void JqueryUtil.doToast({type: "danger", content: this.constructor._DESERIALIZE_MSG_INVALID});
+		if (isNaN(budget)) return void JqueryUtil.doToast({ type: "danger", content: this.constructor._DESERIALIZE_MSG_INVALID });
 
 		if (
 			!rules
 				.every(it => it instanceof Array && it[0] != null && !isNaN(it[0]) && it[1] != null && !isNaN(it[1]))
-		) return void JqueryUtil.doToast({type: "danger", content: this.constructor._DESERIALIZE_MSG_INVALID});
+		) return void JqueryUtil.doToast({ type: "danger", content: this.constructor._DESERIALIZE_MSG_INVALID });
 
 		return {
 			pb_budget: budget,
@@ -693,12 +725,12 @@ export class StatGenUi extends BaseComponent {
 		};
 	}
 
-	_render_all ($wrpTab) {
+	_render_all($wrpTab) {
 		if (this._isLevelUp) return this._render_isLevelUp($wrpTab);
 		this._render_isLevelOne($wrpTab);
 	}
 
-	_render_isLevelOne ($wrpTab) {
+	_render_isLevelOne($wrpTab) {
 		let $stgNone;
 		let $stgMain;
 		const $elesRolled = [];
@@ -735,15 +767,18 @@ export class StatGenUi extends BaseComponent {
 		hkStgArray();
 		// endregion
 
-		// region Manual header
-		const $stgManualHeader = this._render_$getStgManualHeader();
-		const hkStgManual = () => $stgManualHeader.toggleVe(this.ixActiveTab === this._IX_TAB_MANUAL);
-		this._addHookActiveTab(hkStgManual);
-		hkStgManual();
-		// endregion
+		// // region Manual header
+		// const $stgManualHeader = this._render_$getStgManualHeader();
+		// const hkStgManual = () => $stgManualHeader.toggleVe(this.ixActiveTab === this._IX_TAB_MANUAL);
+		// this._addHookActiveTab(hkStgManual);
+		// hkStgManual();
+		// // endregion
 
-		// region Class-specific elements
-		
+		// region Class Selector tab
+		const $stgClassSelector = this._render_$getStgClassSelector();
+		const hkStgClassSelector = () => $stgClassSelector.toggleVe(this.ixActiveTab === this._IX_TAB_CLASS_SELECTOR);
+		this._addHookActiveTab(hkStgClassSelector);
+		hkStgClassSelector();
 		// endregion
 
 		// region Other elements
@@ -767,7 +802,7 @@ export class StatGenUi extends BaseComponent {
 
 		const $wrpsBase = Parser.ABIL_ABVS.map(ab => {
 			// region Rolled
-			const {propAbilSelectedRollIx} = this.constructor._rolled_getProps(ab);
+			const { propAbilSelectedRollIx } = this.constructor._rolled_getProps(ab);
 
 			const $selRolled = $(`<select class="form-control input-xs form-control--minimal statgen-shared__ipt statgen-shared__ipt--sel"></select>`)
 				.change(() => {
@@ -777,12 +812,12 @@ export class StatGenUi extends BaseComponent {
 						...Parser.ABIL_ABVS
 							.map(ab => this.constructor._rolled_getProps(ab).propAbilSelectedRollIx)
 							.filter(prop => ix != null && this._state[prop] === ix)
-							.mergeMap(prop => ({[prop]: null})),
+							.mergeMap(prop => ({ [prop]: null })),
 						[propAbilSelectedRollIx]: ~ix ? ix : null,
 					};
 					this._proxyAssignSimple("state", nxtState);
 				});
-			$(`<option></option>`, {value: -1, text: "\u2014"}).appendTo($selRolled);
+			$(`<option></option>`, { value: -1, text: "\u2014" }).appendTo($selRolled);
 
 			let $optionsRolled = [];
 			const hkRolls = () => {
@@ -790,7 +825,7 @@ export class StatGenUi extends BaseComponent {
 
 				this._state.rolled_rolls.forEach((it, i) => {
 					const cntPrevRolls = this._state.rolled_rolls.slice(0, i).filter(r => r.total === it.total).length;
-					const $opt = $(`<option></option>`, {value: i, text: `${it.total}${cntPrevRolls ? Parser.numberToSubscript(cntPrevRolls) : ""}`}).appendTo($selRolled);
+					const $opt = $(`<option></option>`, { value: i, text: `${it.total}${cntPrevRolls ? Parser.numberToSubscript(cntPrevRolls) : ""}` }).appendTo($selRolled);
 					$optionsRolled.push($opt);
 				});
 
@@ -813,7 +848,7 @@ export class StatGenUi extends BaseComponent {
 			// endregion
 
 			// region Array
-			const {propAbilSelectedScoreIx} = this.constructor._array_getProps(ab);
+			const { propAbilSelectedScoreIx } = this.constructor._array_getProps(ab);
 
 			const $selArray = $(`<select class="form-control input-xs form-control--minimal statgen-shared__ipt statgen-shared__ipt--sel"></select>`)
 				.change(() => {
@@ -823,14 +858,14 @@ export class StatGenUi extends BaseComponent {
 						...Parser.ABIL_ABVS
 							.map(ab => this.constructor._array_getProps(ab).propAbilSelectedScoreIx)
 							.filter(prop => ix != null && this._state[prop] === ix)
-							.mergeMap(prop => ({[prop]: null})),
+							.mergeMap(prop => ({ [prop]: null })),
 						[propAbilSelectedScoreIx]: ~ix ? ix : null,
 					};
 					this._proxyAssignSimple("state", nxtState);
 				});
-			$(`<option></option>`, {value: -1, text: "\u2014"}).appendTo($selArray);
+			$(`<option></option>`, { value: -1, text: "\u2014" }).appendTo($selArray);
 
-			StatGenUi._STANDARD_ARRAY.forEach((it, i) => $(`<option></option>`, {value: i, text: it}).appendTo($selArray));
+			StatGenUi._STANDARD_ARRAY.forEach((it, i) => $(`<option></option>`, { value: i, text: it }).appendTo($selArray));
 
 			const hookIxArray = () => {
 				const ix = this._state[propAbilSelectedScoreIx] == null ? -1 : this._state[propAbilSelectedScoreIx];
@@ -856,7 +891,7 @@ export class StatGenUi extends BaseComponent {
 			);
 
 			const hkPb = () => {
-				const {min: minScore, max: maxScore} = this._pb_getMinMaxScores();
+				const { min: minScore, max: maxScore } = this._pb_getMinMaxScores();
 				this._state[propPb] = Math.min(maxScore, Math.max(minScore, this._state[propPb]));
 			};
 			this._addHookBase(propPb, hkPb);
@@ -866,7 +901,7 @@ export class StatGenUi extends BaseComponent {
 			// endregion
 
 			// region Manual
-			const {propAbilValue} = this.constructor._manual_getProps(ab);
+			const { propAbilValue } = this.constructor._manual_getProps(ab);
 			const $iptManual = ComponentUiUtil.$getIptInt(
 				this,
 				propAbilValue,
@@ -907,76 +942,31 @@ export class StatGenUi extends BaseComponent {
 			$hrPreview: $hrPreviewBackground,
 		} = this._renderLevelOneBackground.render();
 
+
+
 		const $wrpAsi = this._render_$getWrpAsi();
 
 		$stgNone = $$`<div class="ve-flex-col w-100 h-100">
 			<div class="ve-flex-v-center"><i>Please select a mode.</i></div>
 		</div>`;
 
+		// $stgMain = $$`<div class="ve-flex-col w-100 h-100">
+		// 	${$stgRolledHeader}
+		// 	${$stgArrayHeader}
+		// 	${$stgClassSelector}
+		// 	${$stgRaceSel}
+
+		// 	${$dispPreviewRace}
+		// 	${$hrPreviewRaceTashas}
+
+		// 	${$wrpAsi}
+		// </div>`;
+
 		$stgMain = $$`<div class="ve-flex-col w-100 h-100">
 			${$stgRolledHeader}
 			${$stgArrayHeader}
-			${$stgManualHeader}
+			${$stgClassSelector}
 
-			<div class="ve-flex mobile-lg__ve-flex-col w-100 px-3">
-				<div class="ve-flex-col">
-					${$stgPbHeader}
-
-					<div class="ve-flex">
-						<div class="ve-flex-col mr-3">
-							<div class="my-1 statgen-pb__header"></div>
-							<div class="my-1 statgen-pb__header ve-flex-h-right">${$btnResetRolledOrArrayOrManual}</div>
-
-							${Parser.ABIL_ABVS.map(it => `<div class="my-1 bold statgen-pb__cell ve-flex-v-center ve-flex-h-right" title="${Parser.attAbvToFull(it)}">${it.toUpperCase()}</div>`)}
-						</div>
-
-						<div class="ve-flex-col mr-3">
-							<div class="my-1 statgen-pb__header"></div>
-							<div class="my-1 bold statgen-pb__header ve-flex-vh-center">Base</div>
-							${$wrpsBase}
-						</div>
-						
-						${$wrpBackgroundOuter}
-						${$wrpRaceOuter}
-
-						<div class="ve-flex-col mr-3">
-							<div class="my-1 statgen-pb__header"></div>
-							<div class="my-1 statgen-pb__header ve-flex-vh-center help ve-muted" title="Input any additional/custom bonuses here">User</div>
-							${$wrpsUser}
-						</div>
-
-						<div class="ve-flex-col mr-3">
-							<div class="my-1 statgen-pb__header"></div>
-							<div class="my-1 statgen-pb__header ve-flex-vh-center">Total</div>
-							${metasTotalAndMod.map(it => it.$wrpIptTotal)}
-						</div>
-
-						<div class="ve-flex-col mr-3">
-							<div class="my-1 statgen-pb__header"></div>
-							<div class="my-1 statgen-pb__header ve-flex-vh-center" title="Modifier">Mod.</div>
-							${metasTotalAndMod.map(it => it.$wrpIptMod)}
-						</div>
-					</div>
-
-					${$stgBackgroundSel}
-					${$stgRaceSel}
-				</div>
-
-				${$vrPbCustom}
-				${$hrPbCustom}
-
-				${$stgPbCustom}
-			</div>
-
-			<hr class="hr-3">
-
-			${$dispPreviewBackground}
-
-			${$hrPreviewBackground}
-
-			${$dispPreviewRace}
-			${$hrPreviewRaceTashas}
-			${$dispTashas}
 
 			${$wrpAsi}
 		</div>`;
@@ -988,13 +978,15 @@ export class StatGenUi extends BaseComponent {
 			.append($stgNone);
 	}
 
-	_renderLevelOneRace = new StatGenUiRenderLevelOneRace({parent: this});
+	_renderLevelOneRace = new StatGenUiRenderLevelOneRace({ parent: this });
 
-	_renderLevelOneBackground = new StatGenUiRenderLevelOneBackground({parent: this});
+	_renderLevelOneBackground = new StatGenUiRenderLevelOneBackground({ parent: this });
 
-	_renderLevelOneClass = new StatGenUiRenderLevelOneClass({parent: this});
+	_renderLevelOneClass = new StatGenUiRenderLevelOneClass({ parent: this });
 
-	_render_isLevelUp ($wrpTab) {
+	_renderLevelOneSubClass = new StatGenUiRenderLevelOneSubclass({ parent: this });
+
+	_render_isLevelUp($wrpTab) {
 		const $wrpsExisting = Parser.ABIL_ABVS.map(ab => {
 			const $iptExisting = $(`<input class="form-control form-control--minimal statgen-shared__ipt ve-text-right" type="number" readonly>`)
 				.val(this._existingScores[ab]);
@@ -1049,9 +1041,9 @@ export class StatGenUi extends BaseComponent {
 		`;
 	}
 
-	_render_$getWrpsUser () {
+	_render_$getWrpsUser() {
 		return Parser.ABIL_ABVS.map(ab => {
-			const {propUserBonus} = this.constructor._common_getProps(ab);
+			const { propUserBonus } = this.constructor._common_getProps(ab);
 			const $ipt = ComponentUiUtil.$getIptInt(
 				this,
 				propUserBonus,
@@ -1065,7 +1057,7 @@ export class StatGenUi extends BaseComponent {
 		});
 	}
 
-	_render_getMetasTotalAndMod () {
+	_render_getMetasTotalAndMod() {
 		return Parser.ABIL_ABVS.map(ab => {
 			const $iptTotal = $(`<input class="form-control form-control--minimal statgen-shared__ipt ve-text-center" type="text" readonly>`);
 			const $iptMod = $(`<input class="form-control form-control--minimal statgen-shared__ipt ve-text-center" type="text" readonly>`);
@@ -1109,37 +1101,37 @@ export class StatGenUi extends BaseComponent {
 		});
 	}
 
-	_render_$getWrpAsi () {
+	_render_$getWrpAsi() {
 		const $wrpAsi = $(`<div class="ve-flex-col w-100"></div>`);
 		this._compAsi.render($wrpAsi);
-		return $wrpAsi;
+		// return $wrpAsi;
 	}
 
-	static _common_getProps (ab) {
+	static _common_getProps(ab) {
 		return {
 			propUserBonus: `${StatGenUi._PROP_PREFIX_COMMON}${ab}_user`,
 		};
 	}
 
-	static _rolled_getProps (ab) {
+	static _rolled_getProps(ab) {
 		return {
 			propAbilSelectedRollIx: `${StatGenUi._PROP_PREFIX_ROLLED}${ab}_abilSelectedRollIx`,
 		};
 	}
 
-	static _array_getProps (ab) {
+	static _array_getProps(ab) {
 		return {
 			propAbilSelectedScoreIx: `${StatGenUi._PROP_PREFIX_ARRAY}${ab}_abilSelectedScoreIx`,
 		};
 	}
 
-	static _manual_getProps (ab) {
+	static _manual_getProps(ab) {
 		return {
 			propAbilValue: `${StatGenUi._PROP_PREFIX_MANUAL}${ab}_abilValue`,
 		};
 	}
 
-	_pb_getRaceAbilityList () {
+	_pb_getRaceAbilityList() {
 		const race = this.race;
 		if (!race?.ability?.length) return null;
 
@@ -1181,21 +1173,21 @@ export class StatGenUi extends BaseComponent {
 			});
 	}
 
-	_pb_getBackgroundAbilityList () {
+	_pb_getBackgroundAbilityList() {
 		const background = this.background;
 		if (!background?.ability?.length) return null;
 		return background.ability;
 	}
 
-	_pb_getRaceAbility () {
+	_pb_getRaceAbility() {
 		return this._pb_getRaceAbilityList()?.[this._state.common_ixAbilityScoreSetRace || 0];
 	}
 
-	_pb_getBackgroundAbility () {
+	_pb_getBackgroundAbility() {
 		return this._pb_getBackgroundAbilityList()?.[this._state.common_ixAbilityScoreSetBackground || 0];
 	}
 
-	_pb_getPointsRemaining (baseState) {
+	_pb_getPointsRemaining(baseState) {
 		const spent = Parser.ABIL_ABVS.map(it => {
 			const prop = `pb_${it}`;
 			const score = baseState[prop];
@@ -1207,40 +1199,130 @@ export class StatGenUi extends BaseComponent {
 		return this._state.pb_budget - spent;
 	}
 
-	_rolled_getTotalScore (ab) {
-		const {propAbilSelectedRollIx} = this.constructor._rolled_getProps(ab);
-		const {propUserBonus} = this.constructor._common_getProps(ab);
-		return (this._state.rolled_rolls[this._state[propAbilSelectedRollIx]] || {total: 0}).total + this._state[propUserBonus] + this._getTotalScore_getBonuses(ab);
+	_rolled_getTotalScore(ab) {
+		const { propAbilSelectedRollIx } = this.constructor._rolled_getProps(ab);
+		const { propUserBonus } = this.constructor._common_getProps(ab);
+		return (this._state.rolled_rolls[this._state[propAbilSelectedRollIx]] || { total: 0 }).total + this._state[propUserBonus] + this._getTotalScore_getBonuses(ab);
 	}
 
-	_array_getTotalScore (ab) {
-		const {propAbilSelectedScoreIx} = this.constructor._array_getProps(ab);
-		const {propUserBonus} = this.constructor._common_getProps(ab);
+	_array_getTotalScore(ab) {
+		const { propAbilSelectedScoreIx } = this.constructor._array_getProps(ab);
+		const { propUserBonus } = this.constructor._common_getProps(ab);
 		return (StatGenUi._STANDARD_ARRAY[this._state[propAbilSelectedScoreIx]] || 0) + this._state[propUserBonus] + this._getTotalScore_getBonuses(ab);
 	}
 
-	_pb_getTotalScore (ab) {
+	_pb_getTotalScore(ab) {
 		const prop = `pb_${ab}`;
-		const {propUserBonus} = this.constructor._common_getProps(ab);
+		const { propUserBonus } = this.constructor._common_getProps(ab);
 		return this._state[prop] + this._state[propUserBonus] + this._getTotalScore_getBonuses(ab);
 	}
 
-	_manual_getTotalScore (ab) {
-		const {propAbilValue} = this.constructor._manual_getProps(ab);
-		const {propUserBonus} = this.constructor._common_getProps(ab);
+	_manual_getTotalScore(ab) {
+		const { propAbilValue } = this.constructor._manual_getProps(ab);
+		const { propUserBonus } = this.constructor._common_getProps(ab);
 		return (this._state[propAbilValue] || 0) + this._state[propUserBonus] + this._getTotalScore_getBonuses(ab);
 	}
 
-	_levelUp_getTotalScore (ab) {
-		const {propUserBonus} = this.constructor._common_getProps(ab);
+	_levelUp_getTotalScore(ab) {
+		const { propUserBonus } = this.constructor._common_getProps(ab);
 		return (this._existingScores[ab] || 0) + this._state[propUserBonus] + this._getTotalScore_getBonuses(ab);
 	}
 
-	_getTotalScore_getBonuses (ab) {
+	_pb_getClassAbilityList() {
+		const cls = this._classes[this._state.common_ixClass];
+		if (!cls?.ability?.length) return null;
+
+		return cls.ability.map(fromClass => {
+			if (
+				this._state.common_isTashas &&
+				this._state.common_isAllowTashasRules
+			) {
+				const weights = [];
+
+				if (fromClass.choose && fromClass.choose.weighted && fromClass.choose.weighted.weights) {
+					weights.push(...fromClass.choose.weighted.weights);
+				}
+
+				Parser.ABIL_ABVS.forEach(it => {
+					if (fromClass[it]) weights.push(fromClass[it]);
+				});
+
+				if (fromClass.choose && fromClass.choose.from) {
+					const count = fromClass.choose.count || 1;
+					const amount = fromClass.choose.amount || 1;
+					for (let i = 0; i < count; ++i) weights.push(amount);
+				}
+
+				weights.sort((a, b) => SortUtil.ascSort(b, a));
+
+				fromClass = {
+					choose: {
+						weighted: {
+							from: [...Parser.ABIL_ABVS],
+							weights,
+						},
+					},
+				};
+			}
+
+			return fromClass;
+		});
+	}
+
+	_pb_getClassAbility() {
+		return this._pb_getClassAbilityList()?.[this._state.common_ixAbilityScoreSetClass || 0];
+	}
+
+	_pb_getSubclassAbilityList() {
+		const subclass = this._subclasses[this._state.common_ixSubclass];
+		if (!subclass?.ability?.length) return null;
+
+		return subclass.ability.map(fromSubclass => {
+			if (
+				this._state.common_isTashas &&
+				this._state.common_isAllowTashasRules
+			) {
+				const weights = [];
+
+				if (fromSubclass.choose && fromSubclass.choose.weighted && fromSubclass.choose.weighted.weights) {
+					weights.push(...fromSubclass.choose.weighted.weights);
+				}
+
+				Parser.ABIL_ABVS.forEach(it => {
+					if (fromSubclass[it]) weights.push(fromSubclass[it]);
+				});
+
+				if (fromSubclass.choose && fromSubclass.choose.from) {
+					const count = fromSubclass.choose.count || 1;
+					const amount = fromSubclass.choose.amount || 1;
+					for (let i = 0; i < count; ++i) weights.push(amount);
+				}
+
+				weights.sort((a, b) => SortUtil.ascSort(b, a));
+
+				fromSubclass = {
+					choose: {
+						weighted: {
+							from: [...Parser.ABIL_ABVS],
+							weights,
+						},
+					},
+				};
+			}
+
+			return fromSubclass;
+		});
+	}
+
+	_pb_getSubclassAbility() {
+		return this._pb_getSubclassAbilityList()?.[this._state.common_ixAbilityScoreSetSubclass || 0];
+	}
+
+	_getTotalScore_getBonuses(ab) {
 		let total = 0;
 
 		if (!this._isLevelUp) {
-			const handleEntityAbility = ({fromEntity, propChoiceMetasFrom, propChoiceWeighted}) => {
+			const handleEntityAbility = ({ fromEntity, propChoiceMetasFrom, propChoiceWeighted }) => {
 				if (fromEntity) {
 					if (fromEntity[ab]) total += fromEntity[ab];
 
@@ -1279,10 +1361,10 @@ export class StatGenUi extends BaseComponent {
 		return total;
 	}
 
-	getSaveableState () {
+	getSaveableState() {
 		const out = super.getSaveableState();
 
-		const handleEntity = ({propIxEntity, page, propData, propHash}) => {
+		const handleEntity = ({ propIxEntity, page, propData, propHash }) => {
 			if (out.state[propIxEntity] == null || !~this._state[propIxEntity]) return;
 
 			out.state[propHash] = UrlUtil.URL_TO_HASH_BUILDER[page](this[propData][out.state[propIxEntity]]);
@@ -1304,7 +1386,7 @@ export class StatGenUi extends BaseComponent {
 		});
 
 		for (let i = 0; i < (out.state.common_cntFeatsCustom || 0); ++i) {
-			const {propIxFeat, propSaveLoadFeatHash} = this.getPropsAsi(i, "custom");
+			const { propIxFeat, propSaveLoadFeatHash } = this.getPropsAsi(i, "custom");
 
 			if (out.state[propIxFeat] == null || !~this._state[propIxFeat]) continue;
 
@@ -1316,22 +1398,22 @@ export class StatGenUi extends BaseComponent {
 	}
 
 	// region External use
-	getSaveableStatePointBuyCustom () {
+	getSaveableStatePointBuyCustom() {
 		const base = this.getSaveableState();
 		return {
-			state: this.constructor._PROPS_POINT_BUY_CUSTOM.mergeMap(k => ({[k]: base.state[k]})),
+			state: this.constructor._PROPS_POINT_BUY_CUSTOM.mergeMap(k => ({ [k]: base.state[k] })),
 		};
 	}
 	// endregion
 
-	setStateFrom (saved, isOverwrite = false) {
+	setStateFrom(saved, isOverwrite = false) {
 		saved = MiscUtil.copy(saved);
 
 		MiscUtil.getOrSet(saved, "state", {});
 
 		saved.state.common_isAllowTashasRules = VetoolsConfig.get("styleSwitcher", "style") !== SITE_STYLE__ONE;
 
-		const handleEntityHash = ({propHash, page, propData, propIxEntity}) => {
+		const handleEntityHash = ({ propHash, page, propData, propIxEntity }) => {
 			if (!saved.state?.[propHash]) return;
 
 			const ixEntity = this[propData].findIndex(ent => {
@@ -1356,7 +1438,7 @@ export class StatGenUi extends BaseComponent {
 		});
 
 		for (let i = 0; i < (saved.state.common_cntFeatsCustom || 0); ++i) {
-			const {propIxFeat, propSaveLoadFeatHash} = this.getPropsAsi(i, "custom");
+			const { propIxFeat, propSaveLoadFeatHash } = this.getPropsAsi(i, "custom");
 
 			if (!saved.state?.[propSaveLoadFeatHash]) continue;
 
@@ -1372,19 +1454,19 @@ export class StatGenUi extends BaseComponent {
 			StatGenUi._PROP_PREFIX_COMMON,
 			StatGenUi._PROP_PREFIX_ROLLED,
 			StatGenUi._PROP_PREFIX_ARRAY,
-			StatGenUi._PROP_PREFIX_MANUAL,
+			StatGenUi._PROP_PREFIX_CREA,
 		];
 
 		Object.keys(saved.state).filter(k => !validKeys.has(k) && !validKeyPrefixes.some(it => k.startsWith(it))).forEach(k => delete saved.state[k]);
 
 		// region Trim the ASI/feat state to the max count of ASIs/feats
 		for (let i = saved.state.common_cntAsi || 0; i < 1000; ++i) {
-			const {propMode, prefix} = this.getPropsAsi(i, "ability");
+			const { propMode, prefix } = this.getPropsAsi(i, "ability");
 			if (saved.state[propMode]) Object.keys(saved.state).filter(k => k.startsWith(prefix)).forEach(k => delete saved.state[k]);
 		}
 
 		for (let i = saved.state.common_cntFeatsCustom || 0; i < 1000; ++i) {
-			const {propMode, prefix} = this.getPropsAsi(i, "custom");
+			const { propMode, prefix } = this.getPropsAsi(i, "custom");
 			if (saved.state[propMode]) Object.keys(saved.state).filter(k => k.startsWith(prefix)).forEach(k => delete saved.state[k]);
 		}
 		// endregion
@@ -1392,16 +1474,16 @@ export class StatGenUi extends BaseComponent {
 		super.setStateFrom(saved, isOverwrite);
 	}
 
-	_pb_getMinMaxScores () {
+	_pb_getMinMaxScores() {
 		return {
 			min: Math.min(...this._state.pb_rules.map(it => it.entity.score)),
 			max: Math.max(...this._state.pb_rules.map(it => it.entity.score)),
 		};
 	}
 
-	_getDefaultStateCommonResettable () {
+	_getDefaultStateCommonResettable() {
 		return {
-			...Parser.ABIL_ABVS.mergeMap(ab => ({[this.constructor._common_getProps(ab).propUserBonus]: 0})),
+			...Parser.ABIL_ABVS.mergeMap(ab => ({ [this.constructor._common_getProps(ab).propUserBonus]: 0 })),
 
 			common_raceChoiceMetasFrom: [],
 			common_raceChoiceMetasWeighted: [],
@@ -1411,21 +1493,21 @@ export class StatGenUi extends BaseComponent {
 		};
 	}
 
-	_getDefaultStateNoneResettable () { return {}; }
+	_getDefaultStateNoneResettable() { return {}; }
 
-	_getDefaultStateRolledResettable () {
+	_getDefaultStateRolledResettable() {
 		return {
-			...Parser.ABIL_ABVS.mergeMap(ab => ({[this.constructor._rolled_getProps(ab).propAbilSelectedRollIx]: null})),
+			...Parser.ABIL_ABVS.mergeMap(ab => ({ [this.constructor._rolled_getProps(ab).propAbilSelectedRollIx]: null })),
 		};
 	}
 
-	_getDefaultStateArrayResettable () {
+	_getDefaultStateArrayResettable() {
 		return {
-			...Parser.ABIL_ABVS.mergeMap(ab => ({[this.constructor._array_getProps(ab).propAbilSelectedScoreIx]: null})),
+			...Parser.ABIL_ABVS.mergeMap(ab => ({ [this.constructor._array_getProps(ab).propAbilSelectedScoreIx]: null })),
 		};
 	}
 
-	_getDefaultStatePointBuyResettable () {
+	_getDefaultStatePointBuyResettable() {
 		return {
 			pb_str: 8,
 			pb_dex: 8,
@@ -1436,22 +1518,22 @@ export class StatGenUi extends BaseComponent {
 		};
 	}
 
-	_getDefaultStatePointBuyCosts () {
+	_getDefaultStatePointBuyCosts() {
 		return {
 			pb_rules: [
-				{score: 8, cost: 0},
-				{score: 9, cost: 1},
-				{score: 10, cost: 2},
-				{score: 11, cost: 3},
-				{score: 12, cost: 4},
-				{score: 13, cost: 5},
-				{score: 14, cost: 7},
-				{score: 15, cost: 9},
-			].map(({score, cost}) => this._getDefaultState_pb_rule(score, cost)),
+				{ score: 8, cost: 0 },
+				{ score: 9, cost: 1 },
+				{ score: 10, cost: 2 },
+				{ score: 11, cost: 3 },
+				{ score: 12, cost: 4 },
+				{ score: 13, cost: 5 },
+				{ score: 14, cost: 7 },
+				{ score: 15, cost: 9 },
+			].map(({ score, cost }) => this._getDefaultState_pb_rule(score, cost)),
 		};
 	}
 
-	_getDefaultState_pb_rule (score, cost) {
+	_getDefaultState_pb_rule(score, cost) {
 		return {
 			id: CryptUtil.uid(),
 			entity: {
@@ -1461,13 +1543,19 @@ export class StatGenUi extends BaseComponent {
 		};
 	}
 
-	_getDefaultStateManualResettable () {
+	_getDefaultStateManualResettable() {
 		return {
-			...Parser.ABIL_ABVS.mergeMap(ab => ({[this.constructor._manual_getProps(ab).propAbilValue]: null})),
+			...Parser.ABIL_ABVS.mergeMap(ab => ({ [this.constructor._manual_getProps(ab).propAbilValue]: null })),
 		};
 	}
 
-	_getDefaultState () {
+	_getDefaultStateClassResettable() {
+		return {
+			...Parser.ABIL_ABVS.mergeMap(ab => ({ [this.constructor._manual_getProps(ab).propAbilValue]: null })),
+		};
+	}
+
+	_getDefaultState() {
 		return {
 			// region Common
 			common_isPreviewRace: false,
@@ -1487,6 +1575,8 @@ export class StatGenUi extends BaseComponent {
 
 			common_isPreviewClass: false,
 			common_ixClass: null,
+			common_isPreviewSubclass: false,
+			common_ixSubclass: null,
 
 			// region Used to allow external components to hook onto score changes
 			common_export_str: null,
@@ -1523,6 +1613,10 @@ export class StatGenUi extends BaseComponent {
 
 			// region Manual
 			...this._getDefaultStateManualResettable(),
+			// endregion
+
+			// region Class
+			...this._getDefaultStateClassResettable(),
 			// endregion
 		};
 	}
